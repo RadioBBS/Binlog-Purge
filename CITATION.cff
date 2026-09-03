@@ -1,0 +1,29 @@
+# Binlog-Purge – Citation File Format (maschinenlesbare Zitation).
+#
+# Projekt:     Binlog-Purge
+# Modul:       CITATION.cff
+# Version:     1.0.0
+# Stand:       2026-09-03
+# Abhaengig:   Python >= 3.10; MariaDB-Client mariadb oder mysql
+# Bezug:       requirements.txt
+# Lizenz:      MIT
+# Upstream:    –
+# Erstellt mit: Cursor Grok 4.6
+# Autor:       (FFHB) / RadioBBS
+#
+# Historie
+# --------
+# Version 1.0.0 – 2026-09-03 – Datei angelegt (oeffentliches Repo).
+
+cff-version: 1.2.0
+message: "Bitte mit diesen Metadaten zitieren."
+title: Binlog-Purge
+abstract: Löscht MariaDB-Binlogs per PURGE BINARY LOGS, nachdem das aktive Log rotiert wurde.
+version: "1.0.0"
+date-released: "2026-09-03"
+license: MIT
+authors:
+  - name: "(FFHB) / RadioBBS"
+repository-code: https://github.com/RadioBBS/Binlog-Purge
+url: https://github.com/RadioBBS/Binlog-Purge
+type: software

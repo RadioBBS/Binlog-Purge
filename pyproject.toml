@@ -1,0 +1,33 @@
+# Binlog-Purge – Python-Projektdefinition.
+#
+# Projekt:     Binlog-Purge
+# Modul:       pyproject.toml
+# Version:     1.0.0
+# Stand:       2026-09-03
+# Abhaengig:   Python >= 3.10; MariaDB-Client mariadb oder mysql
+# Bezug:       requirements.txt
+# Lizenz:      MIT
+# Upstream:    –
+# Erstellt mit: Cursor Grok 4.6
+# Autor:       (FFHB) / RadioBBS
+#
+# Historie
+# --------
+# Version 1.0.0 – 2026-09-03 – Erstausgabe
+#
+# Laufzeit-Abhaengigkeiten weiterhin in requirements.txt installieren:
+#   python -m pip install -r requirements.txt
+
+[project]
+name = "binlog-purge"
+version = "1.0.0"
+description = "Löscht MariaDB-Binlogs per PURGE BINARY LOGS, nachdem das aktive Log rotiert wurde."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "(FFHB) / RadioBBS" }]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/RadioBBS/Binlog-Purge"
+Repository = "https://github.com/RadioBBS/Binlog-Purge"

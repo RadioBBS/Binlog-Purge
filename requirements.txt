@@ -1,0 +1,36 @@
+# Binlog-Purge – Abhaengigkeiten.
+#
+# Projekt:     Binlog-Purge
+# Modul:       requirements.txt
+# Version:     1.0.0
+# Stand:       2026-09-03
+# Abhaengig:   Python >= 3.10; MariaDB-Client mariadb oder mysql
+# Bezug:       requirements.txt
+# Lizenz:      MIT
+# Upstream:    –
+# Erstellt mit: Cursor Grok 4.6
+# Autor:       (FFHB) / RadioBBS
+#
+# Historie
+# --------
+# Version 1.0.0 – 2026-09-03 – Stdlib only
+#
+# -----------------------------------------------------------------------------
+# Installation der erwarteten Abhaengigkeiten (Beispiel)
+# -----------------------------------------------------------------------------
+#
+#   python -m pip install -r requirements.txt
+#
+# Empfohlen in einer virtuellen Umgebung:
+#
+#   python -m venv .venv
+#   .venv\Scripts\activate
+#   python -m pip install -r requirements.txt
+#
+# Linux/macOS (Aktivierung abweichend):
+#
+#   python3 -m venv .venv
+#   source .venv/bin/activate
+#   python3 -m pip install -r requirements.txt
+#
+# Keine Extra-Python-Pakete. Pflicht-Binary: MariaDB-Client (mariadb/mysql).

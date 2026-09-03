@@ -1,0 +1,63 @@
+# Werte analog zu den Dateikoepfen (Styleguide 2.0.1 / Software-Standard 1.5.1).
+#
+# Projekt:     Binlog-Purge
+# Modul:       PROJECT.yaml
+# Version:     1.0.0
+# Stand:       2026-09-03
+# Abhaengig:   Python >= 3.10; MariaDB-Client mariadb oder mysql
+# Bezug:       requirements.txt
+# Lizenz:      MIT
+# Upstream:    –
+# Erstellt mit: Cursor Grok 4.6
+# Autor:       (FFHB) / RadioBBS
+#
+# Historie
+# --------
+# Version 1.0.0 – 2026-09-03 – Erstausgabe
+
+name: Binlog-Purge
+description: Löscht MariaDB-Binlogs per PURGE BINARY LOGS, nachdem das aktive Log rotiert wurde.
+language: python
+python_min: "3.10"
+license: MIT
+version: "1.0.0"
+stand: "2026-09-03"
+author: (FFHB) / RadioBBS
+upstream: "–"
+scripts:
+  - binlog_purge.py
+  - project_meta.py
+repository:
+  host: github
+  owner: RadioBBS
+  name: Binlog-Purge
+  url: https://github.com/RadioBBS/Binlog-Purge
+  visibility: public
+  default_branch: main
+standards:
+  styleguide: "2.0.1"
+  styleguide_file: "%USERPROFILE%\\Documents\\Cursor\\.Security-and-Styleguide\\0-Style‑Guide.txt"
+  software_standard: "1.5.1"
+  software_standard_file: "%USERPROFILE%\\Documents\\Cursor\\.Security-and-Styleguide\\MY-SOFTWARE-STANDARD v1.0.0.txt"
+testing:
+  framework: unittest
+  command: python -m unittest tests.test_binlog_purge
+  required: true
+  live_database: false
+cli:
+  help: [--help, -h]
+  version: [--version]
+  wait_at_end: [--Ende, -E]
+maintenance:
+  status: active
+  owner: RadioBBS
+documentation:
+  language: de
+security:
+  secrets_in_repo: false
+  scans_dot_directories: false
+machine_readable:
+  - PROJECT.yaml
+  - pyproject.toml
+  - CITATION.cff
+  - .github/workflows/ci.yml
