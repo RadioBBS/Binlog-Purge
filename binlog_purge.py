@@ -777,7 +777,7 @@ def schreibe_startausgabe() -> None:
         os.system("")
     innen = f"  {PROJECT_NAME}  "
     linie = "═" * len(innen)
-    farbe = "\033[34m" if _ausgabe_ist_terminal() else ""
+    farbe = "\033[96m" if _ausgabe_ist_terminal() else ""
     aus = "\033[0m" if farbe else ""
     print(f"{farbe}╔{linie}╗{aus}")
     print(f"{farbe}║{innen}║{aus}")
