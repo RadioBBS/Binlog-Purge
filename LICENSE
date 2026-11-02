@@ -23,9 +23,9 @@ SOFTWARE.
 ------------------------------------------------------------------------------
 Projekt:     Binlog-Purge
 Modul:       LICENSE
-Version:     1.0.0
-Stand:       2026-09-03
-Abhaengig:   Python >= 3.10; MariaDB-Client mariadb oder mysql
+Version:     1.1.1
+Stand:       2026-11-02
+Abhaengig:   Python >= 3.11; MariaDB-Client mariadb oder mysql
 Bezug:       requirements.txt
 Lizenz:      MIT
 Upstream:    –

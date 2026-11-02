@@ -4,9 +4,9 @@ Binlog-Purge – Löscht MariaDB-Binlogs per PURGE BINARY LOGS, nachdem das akti
 
 Projekt:     Binlog-Purge
 Modul:       binlog_purge.py
-Version:     1.0.0
-Stand:       2026-09-03
-Abhaengig:   Python >= 3.10; MariaDB-Client mariadb oder mysql
+Version:     1.1.1
+Stand:       2026-11-02
+Abhaengig:   Python >= 3.11; MariaDB-Client mariadb oder mysql
 Bezug:       requirements.txt
 Lizenz:      MIT
 Upstream:    –
@@ -20,6 +20,8 @@ Löscht MariaDB-Binlogs per PURGE BINARY LOGS, nachdem das aktive Log rotiert wu
 Historie
 --------
 Version 1.0.0 – 2026-09-03 – FLUSH BINARY LOGS, PURGE BEFORE NOW, Fallback PURGE TO
+Version 1.1.0 – 2026-09-03 – SET GLOBAL slave_connections_needed_for_purge=0 vor PURGE
+Version 1.1.1 – 2026-11-02 – Startausgabe und Python 3.11 nach Styleguide 2.1.0.
 
 Aufruf / Nutzung
 ----------------
@@ -35,6 +37,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import platform
 import re
 import shutil
 import subprocess
@@ -67,6 +70,7 @@ IN_USE_RE = re.compile(
 SSL_FLAGS = (("--ssl=off",), ("--skip-ssl",), ("--ssl-mode=DISABLED",), ())
 SQL_PURGE_NOW = "PURGE BINARY LOGS BEFORE NOW()"
 SQL_FLUSH = "FLUSH BINARY LOGS"
+SQL_PURGE_REPLIKATE_AUS = "SET GLOBAL slave_connections_needed_for_purge=0"
 CLIENT_TIMEOUT_S = 3600
 RETRY_PAUSE_S = 2.0
 MAX_VERSUCHE = 8
@@ -116,8 +120,9 @@ def zeige_hilfe() -> int:
     print(f"{PROJECT_NAME} {__version__} ({__date__})")
     print(BESCHREIBUNG)
     print()
-    print("Ablauf: FLUSH BINARY LOGS, dann PURGE BINARY LOGS BEFORE NOW();")
-    print("bei 'in use' PURGE BINARY LOGS TO <aktuelles Log>.")
+    print("Ablauf: SET GLOBAL slave_connections_needed_for_purge=0,")
+    print("FLUSH BINARY LOGS, PURGE BINARY LOGS TO <aktuelles Log>.")
+    print("Ohne den SET-Schritt liefert MariaDB 11.4+/12 Exit 0 und loescht nichts.")
     print()
     print("Verwendung:")
     print("  python binlog_purge.py --help")
@@ -155,7 +160,8 @@ def zeige_hilfe() -> int:
     print("  --client PFAD")
     print("    Typ: Pfad  Standard: MariaDB 12.3\\bin\\mariadb.exe oder PATH")
     print("    Beschreibung: mariadb- bzw. mysql-Client.")
-    print(r'    Beispiel: --client "%PROGRAMFILES%\MariaDB 12.3\bin\mariadb.exe"')
+    print(r'    Beispiel CMD: --client "%PROGRAMFILES%\MariaDB 12.3\bin\mariadb.exe"')
+    print(r'    Beispiel PowerShell: --client "$env:ProgramFiles\MariaDB 12.3\bin\mariadb.exe"')
     print("  --dry-run")
     print("    Typ: Schalter  Standard: aus")
     print("    Beschreibung: Nur SQL und Dateiliste zeigen, nichts loeschen.")
@@ -558,6 +564,57 @@ def pruefe_werte(ns: argparse.Namespace) -> str | None:
     return None
 
 
+def zu_viele_altlogs(logs: list[tuple[str, int]], aktuell: str) -> bool:
+    """Prueft, ob nach dem Purge noch Alt-Logs stehen.
+
+    Parameter: logs – SHOW BINARY LOGS; aktuell – aktives Log
+    Rueckgabe: True wenn mindestens ein Log neben dem aktiven bleibt
+    Fehlerfaelle: keine
+    Beispiel: zu_viele_altlogs([("mysql-bin.000001", 1)], "mysql-bin.000002")
+    """
+    return any(name != aktuell for name, _groesse in logs)
+
+
+def aktiviere_standalone_purge(cfg: Laufzeit) -> None:
+    """Hebt die Replikat-Sperre fuer PURGE auf (MariaDB 11.4+ / 12).
+
+    Parameter: cfg
+    Rueckgabe: None
+    Fehlerfaelle: unbekannte Variable wird ignoriert (aeltere Server)
+    Beispiel: aktiviere_standalone_purge(cfg)
+    """
+    print(SQL_PURGE_REPLIKATE_AUS)
+    schreibe_log(cfg, SQL_PURGE_REPLIKATE_AUS)
+    rc, _out, err = fuehre_sql(cfg, SQL_PURGE_REPLIKATE_AUS, timeout=30)
+    if rc != 0:
+        text = err.lower()
+        if "unknown" in text or "does not exist" in text:
+            return
+        print(f"Hinweis: {err.strip()}")
+        return
+    print("Standalone: PURGE ohne Replikat-Verbindung erlaubt.")
+
+
+def drucke_rest(logs: list[tuple[str, int]]) -> None:
+    """Gibt eine kurze Restliste aus, nicht hunderte Zeilen.
+
+    Parameter: logs
+    Rueckgabe: None
+    Fehlerfaelle: keine
+    Beispiel: drucke_rest([("mysql-bin.000010", 10)])
+    """
+    print(f"Verbleibende Binlogs: {len(logs)}")
+    if len(logs) <= 6:
+        for name, groesse in logs:
+            print(f"  {name}\t{groesse}")
+        return
+    for name, groesse in logs[:2]:
+        print(f"  {name}\t{groesse}")
+    print("  ...")
+    for name, groesse in logs[-2:]:
+        print(f"  {name}\t{groesse}")
+
+
 def purge_einmal(cfg: Laufzeit, sql: str) -> tuple[int, str]:
     """Fuehrt ein PURGE/FLUSH aus und protokolliert.
 
@@ -575,19 +632,23 @@ def purge_einmal(cfg: Laufzeit, sql: str) -> tuple[int, str]:
 
 
 def purge_mit_fallback(cfg: Laufzeit, aktuell: str, logs: list[str]) -> tuple[int, str]:
-    """PURGE BEFORE NOW, bei 'in use' PURGE TO in Chargen.
+    """PURGE TO aktuelles Log, sonst BEFORE NOW, bei 'in use' Chargen.
 
     Parameter: cfg, aktuell – aktives Log, logs – alle Namen
     Rueckgabe: letzter (rc, stderr)
     Fehlerfaelle: Datei-in-Verwendung wird abgefangen
     Beispiel: purge_mit_fallback(cfg, "mysql-bin.000010", names)
     """
+    rc, err = purge_einmal(cfg, sql_purge_to(aktuell))
+    if rc == 0:
+        return rc, err
+    print("Hinweis: PURGE TO blockiert – versuche BEFORE NOW().")
     rc, err = purge_einmal(cfg, SQL_PURGE_NOW)
     if rc == 0:
         return rc, err
     if parse_in_use_name(err) is None and "in use" not in err.lower():
         return rc, err
-    print("Hinweis: Datei in Verwendung – Fallback PURGE TO (aktive Datei bleibt).")
+    print("Hinweis: Datei in Verwendung – Fallback PURGE TO in Chargen.")
     schreibe_log(cfg, f"Fallback nach in-use: {err.strip()}")
     for _versuch in range(MAX_VERSUCHE):
         rc, err = purge_einmal(cfg, sql_purge_to(aktuell))
@@ -632,15 +693,17 @@ def fachlauf(cfg: Laufzeit) -> int:
     bytes_zahl = sum(s for n, s in logs if n != aktuell)
     print(f"Binlogs: {len(logs)} Dateien, aktiv: {aktuell}")
     if cfg.dry_run:
+        print(SQL_PURGE_REPLIKATE_AUS)
         print(SQL_FLUSH)
+        print(sql_purge_to(aktuell))
         print(SQL_PURGE_NOW)
-        print(f"Bei 'in use': {sql_purge_to(aktuell)}")
         if cfg.reset_master:
             print("RESET MASTER")
         return 0
     if not bestaetigen(cfg, max(0, len(logs) - 1), bytes_zahl):
         print("FEHLER: Loeschen nicht bestaetigt. --yes verwenden.", file=sys.stderr)
         return 2
+    aktiviere_standalone_purge(cfg)
     rc, err = purge_einmal(cfg, SQL_FLUSH)
     if rc != 0:
         print(f"FEHLER: FLUSH BINARY LOGS: {err.strip()}", file=sys.stderr)
@@ -655,23 +718,93 @@ def fachlauf(cfg: Laufzeit) -> int:
         return 1
     namen = [n for n, _s in logs]
     rc, err = purge_mit_fallback(cfg, aktuell, namen)
+    if rc == 0:
+        rest_check = liste_binlogs(cfg)
+        aktuell_check = aktuelles_log(cfg, rest_check)
+        if zu_viele_altlogs(rest_check, aktuell_check):
+            print("PURGE lieferte Erfolg, Alt-Logs bleiben (MariaDB-Sperre).")
+            aktiviere_standalone_purge(cfg)
+            rc, err = purge_einmal(cfg, sql_purge_to(aktuell_check))
+            rest_check = liste_binlogs(cfg)
+            aktuell_check = aktuelles_log(cfg, rest_check)
+            if zu_viele_altlogs(rest_check, aktuell_check):
+                rc = 1
+                err = "Alt-Logs nach PURGE noch vorhanden."
     if rc != 0 and cfg.reset_master:
         print("PURGE weiter blockiert – RESET MASTER (kein Replikat noetig).")
         rc, err = purge_einmal(cfg, "RESET MASTER")
     if rc != 0:
         print(f"FEHLER: PURGE: {err.strip()}", file=sys.stderr)
         print(
-            "Naechster Schritt: mit --yes --reset-master neu versuchen "
-            "(keine Replikation aktiv).",
+            "Naechster Schritt: python binlog_purge.py --yes --reset-master "
+            "(keine Replikation). Dauerhaft in my.ini: "
+            "slave_connections_needed_for_purge=0",
             file=sys.stderr,
         )
         return 1
     rest = liste_binlogs(cfg)
-    print(f"Fertig. Verbleibende Binlogs: {len(rest)}")
-    for name, groesse in rest:
-        print(f"  {name}\t{groesse}")
+    print("Fertig.")
+    drucke_rest(rest)
+    print("Dauerhaft in db_data\\my.ini unter [mysqld]:")
+    print("slave_connections_needed_for_purge=0")
     schreibe_log(cfg, f"Rest {len(rest)}")
     return 0
+
+
+def _ausgabe_ist_terminal() -> bool:
+    """Meldet, ob stdout ein Terminal ist.
+
+    Parameter: keine
+    Rueckgabe: True bei einem Terminal
+    Fehlerfaelle: fehlende isatty-Methode gilt als kein Terminal
+    Beispiel: _ausgabe_ist_terminal()
+    """
+    try:
+        return bool(sys.stdout.isatty())
+    except (AttributeError, ValueError):
+        return False
+
+
+def schreibe_startausgabe() -> None:
+    """Gibt Kurzname, Zweck und Version vor dem Fachlauf aus.
+
+    Parameter: keine
+    Rueckgabe: None
+    Fehlerfaelle: keine
+    Beispiel: schreibe_startausgabe()
+    """
+    if sys.platform == "win32":
+        os.system("")
+    innen = f"  {PROJECT_NAME}  "
+    linie = "═" * len(innen)
+    farbe = "\033[34m" if _ausgabe_ist_terminal() else ""
+    aus = "\033[0m" if farbe else ""
+    print(f"{farbe}╔{linie}╗{aus}")
+    print(f"{farbe}║{innen}║{aus}")
+    print(f"{farbe}╚{linie}╝{aus}")
+    print(BESCHREIBUNG)
+    print()
+    print(f"Version {__version__}  |  {__date__}")
+    print()
+
+
+def pruefe_plattform() -> bool:
+    """Prüft Windows und Linux vor dem Fachlauf.
+
+    Parameter: keine
+    Rueckgabe: True, wenn das System erlaubt ist
+    Fehlerfaelle: eine Zeile auf stderr und False
+    Beispiel: pruefe_plattform()
+    """
+    system = platform.system()
+    if system in {"Windows", "Linux"}:
+        return True
+    print(
+        "FEHLER: Dieses Programm läuft unter Windows 11 und Linux "
+        f"(erkannt: {system}).",
+        file=sys.stderr,
+    )
+    return False
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -695,30 +828,34 @@ def main(argv: list[str] | None = None) -> int:
             print(f"FEHLER: {fehler} (siehe --help)", file=sys.stderr)
             code = 2
         else:
-            check_runtime()
-            client = finde_client(ns.client)
-            if client is None:
-                print("FEHLER: MariaDB-Client nicht gefunden.", file=sys.stderr)
-                print(f"Naechster Schritt: {README_CLIENT_WIN}", file=sys.stderr)
-                print(f"Linux: {README_CLIENT_DEB}", file=sys.stderr)
+            schreibe_startausgabe()
+            if not pruefe_plattform():
                 code = 1
             else:
-                cfg = Laufzeit(
-                    host=ns.host,
-                    port=ns.port,
-                    user=ns.user,
-                    password=ns.password,
-                    client=client,
-                    ssl_flags=(),
-                    dry_run=ns.dry_run,
-                    yes=ns.yes,
-                    reset_master=ns.reset_master,
-                    log_an=ns.log,
-                    logfile=ns.logfile,
-                    batch=ns.batch,
-                )
-                cfg.ssl_flags = probe_ssl(cfg)
-                code = fachlauf(cfg)
+                check_runtime()
+                client = finde_client(ns.client)
+                if client is None:
+                    print("FEHLER: MariaDB-Client nicht gefunden.", file=sys.stderr)
+                    print(f"Naechster Schritt: {README_CLIENT_WIN}", file=sys.stderr)
+                    print(f"Linux: {README_CLIENT_DEB}", file=sys.stderr)
+                    code = 1
+                else:
+                    cfg = Laufzeit(
+                        host=ns.host,
+                        port=ns.port,
+                        user=ns.user,
+                        password=ns.password,
+                        client=client,
+                        ssl_flags=(),
+                        dry_run=ns.dry_run,
+                        yes=ns.yes,
+                        reset_master=ns.reset_master,
+                        log_an=ns.log,
+                        logfile=ns.logfile,
+                        batch=ns.batch,
+                    )
+                    cfg.ssl_flags = probe_ssl(cfg)
+                    code = fachlauf(cfg)
     if ns.Ende:
         warte_auf_ende()
     return code

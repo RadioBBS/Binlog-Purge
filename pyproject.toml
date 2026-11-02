@@ -2,9 +2,9 @@
 #
 # Projekt:     Binlog-Purge
 # Modul:       pyproject.toml
-# Version:     1.0.0
-# Stand:       2026-09-03
-# Abhaengig:   Python >= 3.10; MariaDB-Client mariadb oder mysql
+# Version:     1.1.1
+# Stand:       2026-11-02
+# Abhaengig:   Python >= 3.11; MariaDB-Client mariadb oder mysql
 # Bezug:       requirements.txt
 # Lizenz:      MIT
 # Upstream:    –
@@ -14,16 +14,17 @@
 # Historie
 # --------
 # Version 1.0.0 – 2026-09-03 – Erstausgabe
+# Version 1.1.1 – 2026-11-02 – Startausgabe und Python 3.11 nach Styleguide 2.1.0.
 #
 # Laufzeit-Abhaengigkeiten weiterhin in requirements.txt installieren:
 #   python -m pip install -r requirements.txt
 
 [project]
 name = "binlog-purge"
-version = "1.0.0"
+version = "1.1.1"
 description = "Löscht MariaDB-Binlogs per PURGE BINARY LOGS, nachdem das aktive Log rotiert wurde."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "(FFHB) / RadioBBS" }]
 dependencies = []

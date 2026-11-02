@@ -2,9 +2,9 @@
 
 Projekt:     Binlog-Purge
 Modul:       CHANGELOG.md
-Version:     1.0.0
-Stand:       2026-09-03
-Abhaengig:   Python >= 3.10; MariaDB-Client mariadb oder mysql
+Version:     1.1.1
+Stand:       2026-11-02
+Abhaengig:   Python >= 3.11; MariaDB-Client mariadb oder mysql
 Bezug:       requirements.txt
 Lizenz:      MIT
 Upstream:    –
@@ -18,6 +18,8 @@ Löscht MariaDB-Binlogs per PURGE BINARY LOGS, nachdem das aktive Log rotiert wu
 Historie
 --------
 Version 1.0.0 – 2026-09-03 – Erstausgabe
+Version 1.1.0 – 2026-09-03 – slave_connections_needed_for_purge=0 vor PURGE
+Version 1.1.1 – 2026-11-02 – Startausgabe und Python 3.11 nach Styleguide 2.1.0.
 
 Aufruf / Nutzung
 ----------------
@@ -27,6 +29,17 @@ Aufruf / Nutzung
   python binlog_purge.py --yes
   python binlog_purge.py --host 127.0.0.1 --port 3307 --user root --yes
   python binlog_purge.py --yes --reset-master
+
+## 1.1.1 – 2026-11-02
+
+- Startausgabe
+- Python 3.11
+- Plattformprüfung
+
+## 1.1.0 – 2026-09-03
+
+- Vor PURGE: `SET GLOBAL slave_connections_needed_for_purge=0` (MariaDB 11.4+/12 No-Op).
+- Restliste gekuerzt; No-Op wird erkannt.
 
 ## 1.0.0 – 2026-09-03
 

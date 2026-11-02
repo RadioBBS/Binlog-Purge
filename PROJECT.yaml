@@ -2,9 +2,9 @@
 #
 # Projekt:     Binlog-Purge
 # Modul:       PROJECT.yaml
-# Version:     1.0.0
-# Stand:       2026-09-03
-# Abhaengig:   Python >= 3.10; MariaDB-Client mariadb oder mysql
+# Version:     1.1.1
+# Stand:       2026-11-02
+# Abhaengig:   Python >= 3.11; MariaDB-Client mariadb oder mysql
 # Bezug:       requirements.txt
 # Lizenz:      MIT
 # Upstream:    –
@@ -14,14 +14,16 @@
 # Historie
 # --------
 # Version 1.0.0 – 2026-09-03 – Erstausgabe
+# Version 1.1.0 – 2026-09-03 – slave_connections_needed_for_purge=0 vor PURGE
+# Version 1.1.1 – 2026-11-02 – Startausgabe und Python 3.11 nach Styleguide 2.1.0.
 
 name: Binlog-Purge
 description: Löscht MariaDB-Binlogs per PURGE BINARY LOGS, nachdem das aktive Log rotiert wurde.
 language: python
-python_min: "3.10"
+python_min: "3.11"
 license: MIT
-version: "1.0.0"
-stand: "2026-09-03"
+version: "1.1.1"
+stand: "2026-11-02"
 author: (FFHB) / RadioBBS
 upstream: "–"
 scripts:
@@ -35,9 +37,9 @@ repository:
   visibility: public
   default_branch: main
 standards:
-  styleguide: "2.0.1"
+  styleguide: "2.1.0"
   styleguide_file: "%USERPROFILE%\\Documents\\Cursor\\.Security-and-Styleguide\\0-Style‑Guide.txt"
-  software_standard: "1.5.1"
+  software_standard: "1.6.0"
   software_standard_file: "%USERPROFILE%\\Documents\\Cursor\\.Security-and-Styleguide\\MY-SOFTWARE-STANDARD v1.0.0.txt"
 testing:
   framework: unittest

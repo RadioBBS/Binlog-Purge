@@ -5,9 +5,9 @@ Binlog-Purge – Löscht MariaDB-Binlogs per PURGE BINARY LOGS, nachdem das akti
 
 Projekt:     Binlog-Purge
 Modul:       README.md
-Version:     1.0.0
-Stand:       2026-09-03
-Abhaengig:   Python >= 3.10; MariaDB-Client mariadb oder mysql
+Version:     1.1.1
+Stand:       2026-11-02
+Abhaengig:   Python >= 3.11; MariaDB-Client mariadb oder mysql
 Bezug:       requirements.txt
 Lizenz:      MIT
 Upstream:    –
@@ -17,10 +17,14 @@ Autor:       (FFHB) / RadioBBS
 Beschreibung
 ------------
 Löscht MariaDB-Binlogs per PURGE BINARY LOGS, nachdem das aktive Log rotiert wurde.
+Das Programm soll die Binlogs löschen, das geht nur, wenn die DB läuft, daduch steht
+diese aber auf den Binlogs. Siehe Zweck:
 
 Historie
 --------
 Version 1.0.0 – 2026-09-03 – Erstausgabe: FLUSH, PURGE BEFORE NOW, Fallback PURGE TO
+Version 1.1.0 – 2026-09-03 – slave_connections_needed_for_purge=0 vor PURGE
+Version 1.1.1 – 2026-11-02 – Startausgabe und Python 3.11 nach Styleguide 2.1.0.
 
 Aufruf / Nutzung
 ----------------
@@ -40,7 +44,7 @@ Löscht MariaDB-Binlogs per PURGE BINARY LOGS, nachdem das aktive Log rotiert wu
 
 ## Voraussetzungen
 
-- Python >= 3.10
+- Python >= 3.11
 - Laufender MariaDB-/MySQL-Server mit Binlogs (DigiKam: Internal Server, Port 3307, DigiKam muss offen sein)
 - Client `mariadb` oder `mysql`
 
@@ -91,7 +95,23 @@ python binlog_purge.py --yes --reset-master
 
 `--help` und `--version` brauchen keinen MariaDB-Client. Der Fachlauf schon; fehlt der Client: Exit 1 und dieser Installationshinweis.
 
+`PURGE BINARY LOGS` allein reicht unter MariaDB 11.4+/12 nicht: der Default `slave_connections_needed_for_purge=1` blockiert das Loeschen ohne Replikat, der Server meldet trotzdem Erfolg. Das Programm setzt die Variable auf 0 und prueft danach die Restmenge.
+
 Standard: Host `127.0.0.1`, Port `3307`, Benutzer `root`, leeres Passwort (DigiKam-Internal-Server mit `skip_grant_tables`). Alles per Parameter ueberschreibbar.
+
+Client-Pfad, je Terminal (unverändert einfügen):
+
+PowerShell:
+
+```powershell
+python binlog_purge.py --client "$env:ProgramFiles\MariaDB 12.3\bin\mariadb.exe" --yes
+```
+
+CMD:
+
+```bat
+python binlog_purge.py --client "%PROGRAMFILES%\MariaDB 12.3\bin\mariadb.exe" --yes
+```
 
 ## Risiken
 

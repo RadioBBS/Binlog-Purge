@@ -3,9 +3,9 @@ Binlog-Purge – Unit-Tests ohne laufende MariaDB.
 
 Projekt:     Binlog-Purge
 Modul:       tests/test_binlog_purge.py
-Version:     1.0.0
-Stand:       2026-09-03
-Abhaengig:   Python >= 3.10; MariaDB-Client mariadb oder mysql
+Version:     1.1.1
+Stand:       2026-11-02
+Abhaengig:   Python >= 3.11; MariaDB-Client mariadb oder mysql
 Bezug:       requirements.txt
 Lizenz:      MIT
 Upstream:    –
@@ -19,6 +19,8 @@ Prueft Versionsabgleich, Lognamen, PURGE-TO-Ziele und CLI ohne Server.
 Historie
 --------
 Version 1.0.0 – 2026-09-03 – Parser, SQL-Helfer, --help/--version
+Version 1.1.0 – 2026-09-03 – No-Op-Erkennung Alt-Logs
+Version 1.1.1 – 2026-11-02 – Startausgabe und Python 3.11 nach Styleguide 2.1.0.
 
 Aufruf / Nutzung
 ----------------
@@ -105,6 +107,12 @@ class TestSqlHelfer(unittest.TestCase):
         self.assertEqual(ziele[-1], "mysql-bin.000005")
         self.assertTrue(all(z in logs for z in ziele))
 
+    def test_zu_viele_altlogs(self) -> None:
+        """No-Op erkennen: Alt-Logs neben dem aktiven File."""
+        logs = [("mysql-bin.000001", 10), ("mysql-bin.000002", 5)]
+        self.assertTrue(binlog_purge.zu_viele_altlogs(logs, "mysql-bin.000002"))
+        self.assertFalse(binlog_purge.zu_viele_altlogs(logs[-1:], "mysql-bin.000002"))
+
     def test_parse_tsv(self) -> None:
         """SHOW BINARY LOGS im Batch-Format."""
         text = "Log_name\tFile_size\nmysql-bin.000001\t1024\nmysql-bin.000002\t2048\n"
@@ -123,7 +131,10 @@ class TestCli(unittest.TestCase):
             code = binlog_purge.main(["--help"])
         self.assertEqual(code, 0)
         self.assertIn(project_meta.BESCHREIBUNG, puffer.getvalue())
-        self.assertIn("PURGE BINARY LOGS BEFORE NOW", puffer.getvalue())
+        self.assertIn("PURGE BINARY LOGS TO", puffer.getvalue())
+        self.assertIn("slave_connections_needed_for_purge=0", puffer.getvalue())
+        self.assertIn("$env:ProgramFiles", puffer.getvalue())
+        self.assertIn("%PROGRAMFILES%", puffer.getvalue())
 
     def test_version(self) -> None:
         """--version Exit 0."""
